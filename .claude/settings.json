@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__plugin_context7_context7__query-docs",
+      "Bash(cat *)",
+      "Bash(go get *)",
+      "Bash(go version)",
+      "Bash(GOTOOLCHAIN=local go get *)",
+      "Bash(go build *)",
+      "Bash(go vet *)",
+      "Bash(go mod tidy)",
+      "Bash(go run ./cmd/sigil version)",
+      "Bash(go run ./cmd/sigil --help)",
+      "Bash(CGO_ENABLED=1 go build *)",
+      "Bash(CGO_ENABLED=1 go test *)",
+      "Bash(go test *)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)"
+    ]
+  }
+}

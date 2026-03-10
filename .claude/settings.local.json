@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "Read(//c/Users/RTT/go/pkg/mod/github.com/smacker/go-tree-sitter@v0.0.0-20240827094217-dd81d9e9be82/javascript/**)",
+      "Read(//c/Users/RTT/go/pkg/mod/github.com/smacker/go-tree-sitter@v0.0.0-20240827094217-dd81d9e9be82/python/**)",
+      "Read(//c/Users/RTT/go/pkg/mod/github.com/smacker/go-tree-sitter@v0.0.0-20240827094217-dd81d9e9be82/typescript/typescript/**)",
+      "Skill(claude-md-management:revise-claude-md)",
+      "Skill(claude-md-management:revise-claude-md:*)",
+      "Bash(./sigil.exe index .)",
+      "Bash(CGO_ENABLED=1 go run ./cmd/sigil index .)",
+      "Bash(CGO_ENABLED=1 go run ./cmd/sigil index . --force)",
+      "Bash(grep -n \"^\\\\s*const q\\\\|^\\\\s*var q\\\\|^\\\\tconst q\\\\|^\\\\tvar q\" d:/Teocci/Devs/go/go-sigil/internal/store/*.go)",
+      "Bash(CGO_ENABLED=1 go run ./cmd/sigil index --help)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
+    ]
+  }
+}
