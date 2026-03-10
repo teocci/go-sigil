@@ -206,8 +206,8 @@ func TestGoParser_Parse_QualifiedNames(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		wantQN  string
+		name   string
+		wantQN string
 	}{
 		{"NewWorker", "mypkg.NewWorker"},
 		{"Run", "mypkg.Worker.Run"},

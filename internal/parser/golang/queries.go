@@ -2,11 +2,11 @@ package golang
 
 // queryFunctions matches top-level function declarations.
 //
-//   (function_declaration
-//     name: (identifier) @func.name
-//     parameters: (parameter_list) @func.params
-//     result: (_)? @func.result
-//     body: (block) @func.body) @func.def
+//	(function_declaration
+//	  name: (identifier) @func.name
+//	  parameters: (parameter_list) @func.params
+//	  result: (_)? @func.result
+//	  body: (block) @func.body) @func.def
 var queryFunctions = []byte(`
 (function_declaration
   name: (identifier) @func.name

@@ -34,7 +34,7 @@ type Walker interface {
 }
 
 // NewWalker returns the best Walker for root.
-// extraIgnore holds additional .glyphignore-style patterns from user config.
+// extraIgnore holds additional .sigilignore-style patterns from user config.
 // If git ≥ 2.25 is present and root is a git repository, a GitWalker is
 // returned; otherwise a FilesystemWalker.
 func NewWalker(root string, extraIgnore []string) Walker {

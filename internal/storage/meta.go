@@ -8,12 +8,12 @@ import (
 
 // RepoMeta holds repository-level metadata persisted in meta.json.
 type RepoMeta struct {
-	Hash               string `json:"hash"`
-	Path               string `json:"path"`
-	Name               string `json:"name"`
-	Mode               string `json:"mode"`                // "git" or "filesystem"
-	InitializedAt      string `json:"initialized_at"`
-	LastIndexedCommit  string `json:"last_indexed_commit,omitempty"`
+	Hash              string `json:"hash"`
+	Path              string `json:"path"`
+	Name              string `json:"name"`
+	Mode              string `json:"mode"` // "git" or "filesystem"
+	InitializedAt     string `json:"initialized_at"`
+	LastIndexedCommit string `json:"last_indexed_commit,omitempty"`
 }
 
 // ReadMeta reads the meta.json file for a repository.

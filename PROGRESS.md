@@ -15,9 +15,9 @@
 | M4 — Tree-sitter Parsing | ✅ Done | 8 files | Go parser, 9 tests |
 | M4b — TS/JS/Python Parsers | ✅ Done | 12 files | 21 tests |
 | M5 — Indexing Pipeline | ✅ Done | 5 files | Smart index, incremental sync |
-| M6 — CLI Query Commands | ⬜ Pending | — | search, get, deps, diff, env… |
-| M7 — Enrichment Pipeline | ⬜ Pending | — | LLM summaries, parallel with M6 |
-| M8 — MCP Server | ⬜ Pending | — | Official go-sdk v1.2.0 |
+| M6 — CLI Query Commands | ✅ Done | 26 files | search, get, deps, outline, tree, overview, env, diff, cache, savings, status, hook |
+| M7 — Enrichment Pipeline | ✅ Done | 8 files | Anthropic→Google→OpenAI→Ollama→template, BatchEnrich, --enrich/--no-enrich |
+| M8 — MCP Server | ✅ Done | 7 files | Official go-sdk v1.2.0, 9 tools, sigil mcp subcommand |
 
 **Critical path:** M1 → M2 → M3 → M4 → M5 → M6 → M8
 **Parallel:** M7 ∥ M6
@@ -132,21 +132,21 @@ github.com/mattn/go-sqlite3  v1.14.34 (CGO — requires gcc + -tags fts5)
 
 ### Files Created
 
-| File | Purpose |
-|---|---|
-| `internal/discovery/walker.go` | FileEntry + Walker interface + NewWalker() factory |
+| File | Purpose                                                       |
+|---|---------------------------------------------------------------|
+| `internal/discovery/walker.go` | FileEntry + Walker interface + NewWalker() factory            |
 | `internal/discovery/git.go` | git version detect (≥2.25/≥2.36), ls-files parsing, untracked |
-| `internal/discovery/filesystem.go` | WalkDir fallback, per-dir ignorer stack |
-| `internal/discovery/gitignore.go` | .gitignore + .glyphignore parser (full glob/negate/anchor) |
-| `internal/discovery/exclusions.go` | Built-in exclusion matching (dirs, globs, exact) |
-| `internal/discovery/packages.go` | FindPackageRoot() via manifest file detection |
-| `internal/discovery/walker_test.go` | 15 tests covering both walkers + ignorer + exclusions |
-| `internal/security/filter.go` | Tier type (Normal/Redacted/Ignored) + Filter interface |
-| `internal/security/classify.go` | SecurityFilter + NewFilter() + patternMatches() |
-| `internal/security/binary.go` | IsBinary() — null-byte ratio check (8KB probe) |
-| `internal/security/pathcheck.go` | IsPathSafe() — symlink + path traversal guard |
-| `internal/security/secrets.go` | IsPlaceholder(), MatchSecretPattern(), helpers |
-| `internal/security/filter_test.go` | 16 tests covering all tiers + binary + pathcheck |
+| `internal/discovery/filesystem.go` | WalkDir fallback, per-dir ignorer stack                       |
+| `internal/discovery/gitignore.go` | .gitignore + .sigilignore parser (full glob/negate/anchor)    |
+| `internal/discovery/exclusions.go` | Built-in exclusion matching (dirs, globs, exact)              |
+| `internal/discovery/packages.go` | FindPackageRoot() via manifest file detection                 |
+| `internal/discovery/walker_test.go` | 15 tests covering both walkers + ignorer + exclusions         |
+| `internal/security/filter.go` | Tier type (Normal/Redacted/Ignored) + Filter interface        |
+| `internal/security/classify.go` | SecurityFilter + NewFilter() + patternMatches()               |
+| `internal/security/binary.go` | IsBinary() — null-byte ratio check (8KB probe)                |
+| `internal/security/pathcheck.go` | IsPathSafe() — symlink + path traversal guard                 |
+| `internal/security/secrets.go` | IsPlaceholder(), MatchSecretPattern(), helpers                |
+| `internal/security/filter_test.go` | 16 tests covering all tiers + binary + pathcheck              |
 
 ### Verification
 
@@ -308,7 +308,7 @@ github.com/smacker/go-tree-sitter  v0.0.0-20240827094217-dd81d9e9be82 (CGO — r
 
 **Goal:** All query subcommands operational.
 
-### Planned Files
+### Files Created
 
 `internal/service/{searcher,retriever,deps,outline,tree,overview,env,differ,cache,savings,context}.go`
 `internal/cli/{search,get,deps,outline,tree,overview,status,env,diff,cache,savings,hook}.go`
@@ -319,13 +319,13 @@ github.com/smacker/go-tree-sitter  v0.0.0-20240827094217-dd81d9e9be82 (CGO — r
 
 **Goal:** LLM-based summaries with graceful fallback. Runs parallel with M6.
 
-### Planned Files
+### Files Created
 
 `internal/enrichment/{enricher,provider,anthropic,google,openai,template,detect,batch}.go`
 
 ---
 
-## M8 — MCP Server ⬜
+## M8 — MCP Server ✅
 
 **Goal:** `sigil-mcp` stdio server with 9 tools registered via official go-sdk.
 
@@ -335,7 +335,7 @@ github.com/smacker/go-tree-sitter  v0.0.0-20240827094217-dd81d9e9be82 (CGO — r
 github.com/modelcontextprotocol/go-sdk  v1.2.0
 ```
 
-### Planned Files
+### Files Created
 
 | File | Purpose |
 |---|---|

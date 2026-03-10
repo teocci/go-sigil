@@ -16,7 +16,7 @@ type FilesystemWalker struct {
 }
 
 // Walk returns all indexable files under root, respecting .gitignore and
-// .glyphignore files found at each directory level, plus built-in exclusions.
+// .sigilignore files found at each directory level, plus built-in exclusions.
 func (w *FilesystemWalker) Walk(ctx context.Context, root string) ([]FileEntry, error) {
 	abs, err := filepath.Abs(root)
 	if err != nil {
@@ -79,10 +79,10 @@ func (w *FilesystemWalker) Walk(ctx context.Context, root string) ([]FileEntry, 
 	return entries, err
 }
 
-// loadDirIgnorers reads .gitignore and .glyphignore from dir and stores them.
+// loadDirIgnorers reads .gitignore and .sigilignore from dir and stores them.
 func loadDirIgnorers(dir string, ignorers map[string]*Ignorer) {
 	var pats []string
-	for _, name := range []string{".gitignore", ".glyphignore"} {
+	for _, name := range []string{".gitignore", ".sigilignore"} {
 		p, _ := LoadIgnoreFile(filepath.Join(dir, name))
 		pats = append(pats, p...)
 	}

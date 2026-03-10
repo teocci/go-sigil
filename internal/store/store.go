@@ -72,6 +72,23 @@ type SymbolStore interface {
 	// GetRepoSavings returns aggregated savings across all sessions for this repo.
 	GetRepoSavings(ctx context.Context) (models.SavingsSummary, error)
 
+	// Aggregate queries
+
+	// CountSymbols returns the total number of symbols indexed.
+	CountSymbols(ctx context.Context) (int, error)
+	// CountFiles returns the total number of tracked files.
+	CountFiles(ctx context.Context) (int, error)
+	// CountPossibleUnresolved returns symbols flagged as possibly unresolved.
+	CountPossibleUnresolved(ctx context.Context) (int, error)
+	// GetLanguageStats returns aggregate symbol/file counts per language.
+	GetLanguageStats(ctx context.Context) ([]models.LanguageStat, error)
+	// GetPackageStats returns aggregate symbol counts per package_root.
+	GetPackageStats(ctx context.Context) ([]models.PackageStat, error)
+	// ListSessions returns all unique session IDs with aggregated savings.
+	ListSessions(ctx context.Context) ([]models.SavingsSession, error)
+	// GetTopSessions returns the top N sessions by tokens_saved.
+	GetTopSessions(ctx context.Context, n int) ([]models.SavingsSession, error)
+
 	// Lifecycle
 
 	// Close releases all database resources.

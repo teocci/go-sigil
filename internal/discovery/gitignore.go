@@ -53,7 +53,7 @@ func (ig *Ignorer) Check(relPath string, isDir bool) (ignored bool, matched bool
 	return
 }
 
-// LoadIgnoreFile reads a .gitignore or .glyphignore file and returns its lines.
+// LoadIgnoreFile reads a .gitignore or .sigilignore file and returns its lines.
 // Returns nil, nil if the file does not exist.
 func LoadIgnoreFile(path string) ([]string, error) {
 	f, err := os.Open(path)

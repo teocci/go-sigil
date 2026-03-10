@@ -137,7 +137,7 @@ git repo exists?        NO  → filesystem mode + one-time warning
 sigil index .
 ```
 
-1. Reads `.gitignore` (all levels) + `.glyphignore` + built-in exclusions
+1. Reads `.gitignore` (all levels) + `.sigilignore` + built-in exclusions
 2. Runs version-appropriate `git ls-files` — one invocation, full tracked file list
    with blob SHAs
 3. Blob SHA is the **sole file-level sync trigger** (see §3.3)
@@ -306,16 +306,16 @@ Every file passes a mandatory security gate before parsing.
 
 **Additional security checks:**
 
-| Check | Method | On Failure |
-|---|---|---|
-| Path traversal | Canonicalize path, verify under repo root | Skip + warn |
-| Symlink escape | `filepath.EvalSymlinks`, verify target under root | Skip + warn |
-| Binary detection | First 8KB: > 0.1% null bytes or non-UTF-8 | Skip silently |
-| File size | Default 2MB, configurable | Skip + warn |
-| Extension allow-list | Per-language known source extensions | Skip silently |
+| Check                 | Method | On Failure |
+|-----------------------|---|---|
+| Path traversal        | Canonicalize path, verify under repo root | Skip + warn |
+| Symlink escape        | `filepath.EvalSymlinks`, verify target under root | Skip + warn |
+| Binary detection      | First 8KB: > 0.1% null bytes or non-UTF-8 | Skip silently |
+| File size             | Default 2MB, configurable | Skip + warn |
+| Extension allow-list  | Per-language known source extensions | Skip silently |
 | Secret value patterns | Regex on constant values: API keys, private keys, DSNs | Index symbol, redact value |
-| `.gitignore` | Full spec parsing at every directory level | Skip silently |
-| `.glyphignore` | User-defined exclusions (gitignore syntax) | Skip silently |
+| `.gitignore`          | Full spec parsing at every directory level | Skip silently |
+| `.sigilignore`        | User-defined exclusions (gitignore syntax) | Skip silently |
 
 **Secret value redaction example:**
 ```json
@@ -982,22 +982,22 @@ sigil update-pricing                               # NOT IMPLEMENTED — not nee
 
 ## 11. Security — Built-in Protections Summary
 
-| Protection | Mechanism |
-|---|---|
-| Path traversal | All paths canonicalized, verified under repo root before access |
-| Symlink escape | `filepath.EvalSymlinks`; target must be under root |
+| Protection                      | Mechanism |
+|---------------------------------|---|
+| Path traversal                  | All paths canonicalized, verified under repo root before access |
+| Symlink escape                  | `filepath.EvalSymlinks`; target must be under root |
 | Secret file redaction (default) | `.env`, `*.pem`, `*.key` etc — keys visible, values nulled |
-| Secret file exclusion (opt-in) | `extra_ignore_filenames` — fully invisible to all tools |
-| Secret value redaction | Regex on constant values; byte range nulled; summary redacted |
-| Placeholder detection | `sigil_env` classifies values as set/empty/placeholder/unset |
-| Binary detection | First 8KB: null byte ratio + non-UTF-8 ratio threshold |
-| File size limit | Configurable (default 2MB) |
-| `.gitignore` respect | Full spec parsing at every directory level |
-| `.glyphignore` | User-defined exclusions with gitignore syntax |
-| No outbound network (default) | Indexing fully local; GitHub mode is explicit opt-in |
-| No credential storage | Tokens via env var only, never written to disk |
-| Index file permissions | `~/.sigil/` mode `0700`; `index.db` mode `0600` |
-| MCP stdio log isolation | `SIGIL_LOG_FILE` must be set — logs never written to stdout |
+| Secret file exclusion (opt-in)  | `extra_ignore_filenames` — fully invisible to all tools |
+| Secret value redaction          | Regex on constant values; byte range nulled; summary redacted |
+| Placeholder detection           | `sigil_env` classifies values as set/empty/placeholder/unset |
+| Binary detection                | First 8KB: null byte ratio + non-UTF-8 ratio threshold |
+| File size limit                 | Configurable (default 2MB) |
+| `.gitignore` respect            | Full spec parsing at every directory level |
+| `.sigilignore`                  | User-defined exclusions with gitignore syntax |
+| No outbound network (default)   | Indexing fully local; GitHub mode is explicit opt-in |
+| No credential storage           | Tokens via env var only, never written to disk |
+| Index file permissions          | `~/.sigil/` mode `0700`; `index.db` mode `0600` |
+| MCP stdio log isolation         | `SIGIL_LOG_FILE` must be set — logs never written to stdout |
 
 ---
 

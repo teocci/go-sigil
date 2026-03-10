@@ -59,6 +59,19 @@ func NewRootCmd() *cobra.Command {
 	root.AddCommand(newVersionCmd())
 	root.AddCommand(newIndexCmd())
 	root.AddCommand(newSyncCmd())
+	root.AddCommand(newSearchCmd())
+	root.AddCommand(newGetCmd())
+	root.AddCommand(newDepsCmd())
+	root.AddCommand(newOutlineCmd())
+	root.AddCommand(newTreeCmd())
+	root.AddCommand(newOverviewCmd())
+	root.AddCommand(newEnvCmd())
+	root.AddCommand(newDiffCmd())
+	root.AddCommand(newCacheCmd())
+	root.AddCommand(newSavingsCmd())
+	root.AddCommand(newStatusCmd())
+	root.AddCommand(newHookCmd())
+	root.AddCommand(newMCPCmd())
 
 	return root
 }

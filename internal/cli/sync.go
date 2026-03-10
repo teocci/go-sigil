@@ -20,7 +20,7 @@ Intended for use by the pre-commit git hook (installed via sigil hook install).`
 			if err != nil {
 				return err
 			}
-			return runIndex(cmd, root, service.IndexOptions{Force: false})
+			return runIndex(cmd, root, service.IndexOptions{Force: false}, false, false)
 		},
 	}
 }

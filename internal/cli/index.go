@@ -8,6 +8,7 @@ import (
 
 	"go-sigil/internal/db"
 	"go-sigil/internal/discovery"
+	"go-sigil/internal/enrichment"
 	"go-sigil/internal/parser"
 	"go-sigil/internal/parser/golang"
 	"go-sigil/internal/parser/javascript"
@@ -23,6 +24,8 @@ import (
 
 func newIndexCmd() *cobra.Command {
 	var force bool
+	var forceEnrich bool
+	var noEnrich bool
 
 	cmd := &cobra.Command{
 		Use:   "index [path]",
@@ -30,7 +33,12 @@ func newIndexCmd() *cobra.Command {
 		Long: `Index a repository's source code into the Sigil symbol store.
 
 On first run, performs a full index. Subsequent runs are incremental —
-only changed files are re-parsed. Use --force to trigger a full rebuild.`,
+only changed files are re-parsed. Use --force to trigger a full rebuild.
+
+Enrichment generates LLM summaries for indexed symbols. It is enabled
+automatically when a provider is detected (ANTHROPIC_API_KEY, GOOGLE_API_KEY,
+OPENAI_API_BASE, or local Ollama). Use --enrich to force it, --no-enrich to
+disable it entirely.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			root, err := resolveRepoRoot(args)
@@ -38,16 +46,18 @@ only changed files are re-parsed. Use --force to trigger a full rebuild.`,
 				return err
 			}
 
-			return runIndex(cmd, root, service.IndexOptions{Force: force})
+			return runIndex(cmd, root, service.IndexOptions{Force: force}, forceEnrich, noEnrich)
 		},
 	}
 
 	cmd.Flags().BoolVar(&force, "force", false, "force full rebuild, ignoring prior state")
+	cmd.Flags().BoolVar(&forceEnrich, "enrich", false, "force enrichment even if no provider is auto-detected")
+	cmd.Flags().BoolVar(&noEnrich, "no-enrich", false, "skip enrichment entirely")
 	return cmd
 }
 
 // runIndex sets up all dependencies and runs the indexer.
-func runIndex(cmd *cobra.Command, repoRoot string, opts service.IndexOptions) error {
+func runIndex(cmd *cobra.Command, repoRoot string, opts service.IndexOptions, forceEnrich, noEnrich bool) error {
 	repoHash, err := storage.RepoHash(repoRoot)
 	if err != nil {
 		return fmt.Errorf("compute repo hash: %w", err)
@@ -94,6 +104,24 @@ func runIndex(cmd *cobra.Command, repoRoot string, opts service.IndexOptions) er
 		filesDir, repoRoot,
 		cfg.Indexing.MaxFiles,
 	)
+
+	// Set up enrichment
+	if !noEnrich && !cfg.Enrichment.Disabled {
+		var enricher enrichment.Enricher
+		if forceEnrich {
+			enricher = enrichment.Detect(cfg.Enrichment.Timeout)
+			if _, ok := enricher.(*enrichment.TemplateEnricher); ok {
+				// Force enrich requested but no provider found — warn
+				fmt.Fprintf(cmd.OutOrStdout(), "Warning: no LLM provider detected, using template summaries\n")
+			}
+		} else if enrichment.IsAvailable() {
+			enricher = enrichment.Detect(cfg.Enrichment.Timeout)
+		}
+		if enricher != nil {
+			indexer.SetEnricher(enricher)
+			fmt.Fprintf(cmd.OutOrStdout(), "Enrichment: %s\n", enrichment.FormatProviderInfo(enricher))
+		}
+	}
 
 	// Register repo in global manifest
 	repoName := filepath.Base(repoRoot)

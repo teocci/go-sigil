@@ -81,6 +81,9 @@ constants/*  → immutable values, no internal deps
 | `internal/discovery/walker.go` | `FileEntry`, `Walker` interface, `NewWalker(root, extraIgnore)` |
 | `internal/security/filter.go` | `Tier` (Normal/Redacted/Ignored), `Filter` interface |
 | `internal/security/classify.go` | `NewFilter(extraIgnore, extraSecret, extraValuePatterns)` |
+| `internal/mcpserver/server.go` | `NewServer(cfg)`, tool registration, `Run(ctx)` |
+| `internal/mcpserver/handlers.go` | All 9 MCP tool handlers |
+| `internal/mcpserver/resolve.go` | `resolveRepoRoot()`, `openRepo()` |
 
 ## Interfaces (all defined at consumer side)
 
@@ -94,7 +97,7 @@ enrichment.Enricher — consumed by service/indexer.go, implemented in enrichmen
 
 All interfaces are mockable. Use mock structs in unit tests, never real SQLite unless testing the store itself.
 
-### Implemented constructor signatures (M3–M5)
+### Implemented constructor signatures (M3–M8)
 
 ```go
 // Auto-selects GitWalker (git ≥ 2.25) or FilesystemWalker.
@@ -130,6 +133,32 @@ service.NewSyncer(idx *Indexer) *Syncer
 
 // IndexOptions.Force = true → full rebuild; false → smart incremental (blob SHA / mtime+size).
 // IndexResult.SymbolsTotal counts only symbols from the current run's indexed files.
+
+// M6 — Query services (all consume store.SymbolStore).
+service.NewSearcher(st) *Searcher        // Search(ctx, query, SearchOptions) (*SearchResult, error)
+service.NewRetriever(st, filesDir, repoRoot) *Retriever  // Get(ctx, ids, files, contextLines) (*GetResult, error)
+service.NewDeps(st) *Deps                // Trace(ctx, symbolID, direction, depth) (*DepsResult, error)
+service.NewOutline(st) *Outline          // ForFile(ctx, file) (*OutlineResult, error)
+service.NewTree(st, repoRoot) *Tree      // Build(ctx, scope, maxDepth, includeSymbolCounts) (*TreeResult, error)
+service.NewOverview(st, meta) *OverviewService  // Summary(ctx) (*OverviewResult, error)
+service.NewEnvService(repoRoot) *EnvService     // Inspect(ctx) (*EnvResult, error)
+service.NewDiffer(st, repoRoot) *Differ         // Diff(ctx, since) (*DiffResult, error)
+service.NewStatus(st, meta, repoRoot) *StatusService  // Check(ctx, verify) (*StatusResult, error)
+service.NewCacheManager(cacheRoot) *CacheManager
+service.NewSavings(st) *SavingsService
+
+// M7 — Enrichment.
+enrichment.Detect(timeout) Enricher     // auto-selects: Anthropic→Google→OpenAI→Ollama→template
+enrichment.IsAvailable() bool
+enrichment.BatchEnrich(ctx, enricher, symbols, srcMap, batchSize)
+indexer.SetEnricher(e enrichment.Enricher)  // wire before calling Index()
+
+// M8 — MCP server.
+mcpserver.NewServer(cfg *config.Config) (*Server, error)
+server.Run(ctx context.Context) error   // stdio transport; blocks until EOF/cancel
+// Handler signature: func(ctx, *mcp.CallToolRequest, InputStruct) (*mcp.CallToolResult, struct{}, error)
+// resolveRepoRoot(path, serverCWD) — git rev-parse --show-toplevel walk-up
+// openRepo(repoRoot, cacheRoot) → (store.SymbolStore, *storage.RepoMeta, error)
 ```
 
 ## Tree-sitter Grammar Gotchas
@@ -194,10 +223,13 @@ CC="zig cc -target x86_64-linux-musl" CGO_ENABLED=1 GOOS=linux go build ./cmd/si
 ## MCP Server Gotchas
 
 - **Never write to stdout** in MCP mode — it corrupts the JSON-RPC stream
-- Always set `SIGIL_LOG_FILE` when running `sigil-mcp`
+- Always set `SIGIL_LOG_FILE` when running `sigil-mcp` or `sigil mcp`
 - Session ID is auto-generated at server start (process lifetime)
 - All 9 MCP tools accept a `path` parameter (optional, falls back to server CWD)
-- Repo selected by walking up from `path` to git root
+- Repo selected by walking up from `path` to git root via `git rev-parse --show-toplevel`
+- `sigil_env` does not open a store — no DB required for `.env` inspection
+- Token savings persisted to `savings_log` via `st.AppendSavings()` on each tool call
+- MCP client config: `{"command": "sigil", "args": ["mcp"], "env": {"SIGIL_LOG_FILE": "..."}}`
 
 ## Testing Patterns
 
@@ -276,4 +308,4 @@ Windows filesystems via `/mnt/c/...`.
 
 ## Implementation Status
 
-See `PROGRESS.md` for current milestone status.
+All milestones M1–M8 complete. See `PROGRESS.md` for full details.

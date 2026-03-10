@@ -13,6 +13,7 @@ import (
 
 	"go-sigil/internal/constants"
 	"go-sigil/internal/discovery"
+	"go-sigil/internal/enrichment"
 	"go-sigil/internal/models"
 	"go-sigil/internal/parser"
 	"go-sigil/internal/security"
@@ -40,7 +41,7 @@ type IndexResult struct {
 
 // Indexer orchestrates the full indexing pipeline:
 //
-//	Walker → SecurityFilter → Parser → Store
+//	Walker → SecurityFilter → Parser → Enricher → Store
 //
 // It is safe for use from a single goroutine.
 type Indexer struct {
@@ -48,8 +49,9 @@ type Indexer struct {
 	filter   security.Filter
 	registry *parser.Registry
 	st       store.SymbolStore
-	filesDir string // ~/.sigil/{hash}/files/ — raw file mirror
-	repoRoot string // absolute repo root
+	enricher enrichment.Enricher // optional; nil = no enrichment
+	filesDir string              // ~/.sigil/{hash}/files/ — raw file mirror
+	repoRoot string              // absolute repo root
 	maxFiles int
 }
 
@@ -76,6 +78,12 @@ func NewIndexer(
 		repoRoot: repoRoot,
 		maxFiles: maxFiles,
 	}
+}
+
+// SetEnricher configures an optional enricher to generate symbol summaries after parsing.
+// Pass nil to disable enrichment. Must be called before Index().
+func (idx *Indexer) SetEnricher(e enrichment.Enricher) {
+	idx.enricher = e
 }
 
 // Index runs a full or incremental index depending on opts.Force and prior state.
@@ -253,6 +261,16 @@ func (idx *Indexer) indexFile(ctx context.Context, entry discovery.FileEntry, ti
 				}
 			}
 		}
+	}
+
+	// Enrich symbols with LLM summaries (or template fallback) if enricher is configured
+	if idx.enricher != nil && len(symbols) > 0 {
+		ptrs := make([]*models.Symbol, len(symbols))
+		for i := range symbols {
+			ptrs[i] = &symbols[i]
+		}
+		srcMap := map[string][]byte{entry.Path: src}
+		enrichment.BatchEnrich(ctx, idx.enricher, ptrs, srcMap, 4)
 	}
 
 	if err := idx.st.UpsertFile(ctx, fileRecord); err != nil {
