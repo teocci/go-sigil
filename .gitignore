@@ -3,6 +3,7 @@ trace.out
 coffee
 ### Go template
 # Binaries for programs and plugins
+bin/
 *.exe
 *.exe~
 *.dll

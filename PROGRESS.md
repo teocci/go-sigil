@@ -371,6 +371,142 @@ echo '{"jsonrpc":"2.0","method":"tools/list","id":1}' | ./sigil-mcp
 
 ---
 
+---
+
+## Phase 2 Overview
+
+| Milestone | Status | Files | Notes |
+|---|---|---|---|
+| Fix 1 — Makefile CGO + bin/ | ✅ Done | 2 files | CGO_ENABLED=1, bin/ output, remove root *.exe |
+| M9 — Service Layer Tests | ✅ Done | 9 files | Mock SymbolStore, table-driven, race-safe |
+| M10 — MCP Handler Tests | ✅ Done | 1 file | 9 tool handlers, mock store injection |
+| M11 — Rust + Java Parsers | ✅ Done | 8 files | tree-sitter, fn/struct/trait/enum/const/type + class/interface/method/enum |
+
+---
+
+## Fix 1 — Makefile CGO + bin/ output ✅
+
+**Completed:** 2026-03-10
+
+**Goal:** Fix `make build` / `make test` to include `CGO_ENABLED=1` (required since M4 tree-sitter)
+and move output binaries out of the repo root into `bin/`.
+
+### Files Changed
+
+| File | Change |
+|---|---|
+| `Makefile` | Add `CGO_ENABLED=1` to `BUILD`/`TEST`; output to `bin/` |
+| `.gitignore` | Add `bin/` entry |
+| repo root | Delete `sigil.exe`, `sigil-mcp.exe`, `mcp.exe` |
+
+### Verification
+
+```bash
+make build       # → bin/sigil.exe, bin/sigil-mcp.exe
+make test        # all tests pass
+make test-race   # race-clean
+make vet         # no vet errors
+```
+
+---
+
+## M9 — Service Layer Test Suite ✅
+
+**Completed:** 2026-03-10
+
+**Goal:** Unit tests for all 11 services in `internal/service/` using an inline mock `SymbolStore`.
+Every CLI command and MCP tool delegates to a service — this is the primary regression safety net.
+
+### Files to Create
+
+| File | Service | Key scenarios |
+|---|---|---|
+| `internal/service/searcher_test.go` | `Searcher` | keyword, kind filter, language filter, empty |
+| `internal/service/retriever_test.go` | `Retriever` | by ID, by file, context lines |
+| `internal/service/deps_test.go` | `Deps` | callers, callees, both, depth limit |
+| `internal/service/outline_test.go` | `Outline` | ForFile returns correct symbols |
+| `internal/service/tree_test.go` | `Tree` | scope, maxDepth, symbol counts |
+| `internal/service/overview_test.go` | `Overview` | summary aggregation |
+| `internal/service/differ_test.go` | `Differ` | diff since git ref |
+| `internal/service/status_test.go` | `Status` | with/without --verify |
+| `internal/service/indexer_test.go` | `Indexer` | Force vs incremental |
+
+### Verification
+
+```bash
+CGO_ENABLED=1 go test ./internal/service/...
+CGO_ENABLED=1 go test -race ./internal/service/...
+```
+
+---
+
+## M10 — MCP Handler Tests ✅
+
+**Completed:** 2026-03-10
+
+**Goal:** Handler-level tests for all 9 MCP tool handlers without a real SQLite DB.
+
+### Files to Create
+
+| File | Coverage |
+|---|---|
+| `internal/mcpserver/handlers_test.go` | happy path, unindexed repo, empty results, invalid params |
+
+### Notes
+
+- May need a small refactor in `handlers.go` to accept store as parameter (instead of calling `openRepo` inline)
+- Test each handler: sigil_search, sigil_get, sigil_deps, sigil_outline, sigil_tree, sigil_overview, sigil_env, sigil_diff, sigil_status
+
+### Verification
+
+```bash
+CGO_ENABLED=1 go test ./internal/mcpserver/...
+CGO_ENABLED=1 go test -race ./internal/mcpserver/...
+```
+
+---
+
+## M11 — Rust + Java Parsers ✅
+
+**Completed:** 2026-03-10
+
+**Goal:** Add Rust and Java tree-sitter parsers following the exact pattern of `internal/parser/golang/`.
+
+### Files Created
+
+| File | Purpose |
+|---|---|
+| `internal/parser/rust/rust.go` | `New()`, implements `parser.Parser` |
+| `internal/parser/rust/queries.go` | S-expression queries for fn/struct/trait/enum/impl/const/type |
+| `internal/parser/rust/rust_test.go` | 6 tests — Language, Symbols, IDs, QualifiedNames, Edges, Empty, Signatures |
+| `internal/parser/rust/testdata/sample.rs` | Fixture: const/type/trait/struct/impl/enum/fn |
+| `internal/parser/java/java.go` | `New()`, implements `parser.Parser` |
+| `internal/parser/java/queries.go` | S-expression queries for class/interface/method/enum |
+| `internal/parser/java/java_test.go` | 6 tests — Language, Symbols, IDs, QualifiedNames, Edges, Empty, Signatures |
+| `internal/parser/java/testdata/Sample.java` | Fixture: class/interface/enum/methods |
+
+### Dependencies
+
+```bash
+go get github.com/smacker/go-tree-sitter/rust
+go get github.com/smacker/go-tree-sitter/java
+go mod tidy
+```
+
+### Registration
+
+Added `rust.New()` and `java.New()` to the parser registry in `internal/cli/index.go`.
+
+### Verification
+
+```bash
+CGO_ENABLED=1 go test ./internal/parser/rust/...
+CGO_ENABLED=1 go test ./internal/parser/java/...
+CGO_ENABLED=1 go test ./...
+```
+
+---
+
 ## Token Efficiency Notes
 
 > Track observations that help optimize future sessions.

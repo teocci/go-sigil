@@ -55,7 +55,7 @@ func (s *Server) handleSearch(ctx context.Context, _ *mcp.CallToolRequest, input
 	if err != nil {
 		return toolError(err), struct{}{}, nil
 	}
-	st, _, err := openRepo(repoRoot, s.cacheRoot)
+	st, _, err := s.openRepoFn(repoRoot, s.cacheRoot)
 	if err != nil {
 		return toolError(err), struct{}{}, nil
 	}
@@ -100,7 +100,7 @@ func (s *Server) handleGet(ctx context.Context, _ *mcp.CallToolRequest, input Ge
 	if err != nil {
 		return toolError(err), struct{}{}, nil
 	}
-	st, _, err := openRepo(repoRoot, s.cacheRoot)
+	st, _, err := s.openRepoFn(repoRoot, s.cacheRoot)
 	if err != nil {
 		return toolError(err), struct{}{}, nil
 	}
@@ -146,7 +146,7 @@ func (s *Server) handleDeps(ctx context.Context, _ *mcp.CallToolRequest, input D
 	if err != nil {
 		return toolError(err), struct{}{}, nil
 	}
-	st, _, err := openRepo(repoRoot, s.cacheRoot)
+	st, _, err := s.openRepoFn(repoRoot, s.cacheRoot)
 	if err != nil {
 		return toolError(err), struct{}{}, nil
 	}
@@ -192,7 +192,7 @@ func (s *Server) handleOutline(ctx context.Context, _ *mcp.CallToolRequest, inpu
 	if err != nil {
 		return toolError(err), struct{}{}, nil
 	}
-	st, _, err := openRepo(repoRoot, s.cacheRoot)
+	st, _, err := s.openRepoFn(repoRoot, s.cacheRoot)
 	if err != nil {
 		return toolError(err), struct{}{}, nil
 	}
@@ -228,7 +228,7 @@ func (s *Server) handleTree(ctx context.Context, _ *mcp.CallToolRequest, input T
 	if err != nil {
 		return toolError(err), struct{}{}, nil
 	}
-	st, _, err := openRepo(repoRoot, s.cacheRoot)
+	st, _, err := s.openRepoFn(repoRoot, s.cacheRoot)
 	if err != nil {
 		return toolError(err), struct{}{}, nil
 	}
@@ -264,7 +264,7 @@ func (s *Server) handleOverview(ctx context.Context, _ *mcp.CallToolRequest, inp
 	if err != nil {
 		return toolError(err), struct{}{}, nil
 	}
-	st, meta, err := openRepo(repoRoot, s.cacheRoot)
+	st, meta, err := s.openRepoFn(repoRoot, s.cacheRoot)
 	if err != nil {
 		return toolError(err), struct{}{}, nil
 	}
@@ -326,7 +326,7 @@ func (s *Server) handleDiff(ctx context.Context, _ *mcp.CallToolRequest, input D
 	if err != nil {
 		return toolError(err), struct{}{}, nil
 	}
-	st, _, err := openRepo(repoRoot, s.cacheRoot)
+	st, _, err := s.openRepoFn(repoRoot, s.cacheRoot)
 	if err != nil {
 		return toolError(err), struct{}{}, nil
 	}
@@ -361,7 +361,7 @@ func (s *Server) handleStatus(ctx context.Context, _ *mcp.CallToolRequest, input
 	if err != nil {
 		return toolError(err), struct{}{}, nil
 	}
-	st, meta, err := openRepo(repoRoot, s.cacheRoot)
+	st, meta, err := s.openRepoFn(repoRoot, s.cacheRoot)
 	if err != nil {
 		return toolError(err), struct{}{}, nil
 	}

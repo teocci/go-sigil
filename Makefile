@@ -2,21 +2,25 @@
 ## SQLite: modernc.org/sqlite (pure Go, no CGO required).
 ## go-tree-sitter (M4+): CGO required — install MinGW-w64 gcc when reaching M4.
 
-BUILD := go build
-TEST  := go test
+BUILD   := go build
+TEST    := go test
+BIN_DIR := bin
 
 .PHONY: all build build-cli build-mcp test test-race vet tidy clean
 
 all: build
 
-## Build both binaries
+## Build both binaries into bin/
 build: build-cli build-mcp
 
-build-cli:
-	$(BUILD) -o sigil.exe ./cmd/sigil
+build-cli: | $(BIN_DIR)
+	$(BUILD) -o $(BIN_DIR)/sigil.exe ./cmd/sigil
 
-build-mcp:
-	$(BUILD) -o sigil-mcp.exe ./cmd/mcp
+build-mcp: | $(BIN_DIR)
+	$(BUILD) -o $(BIN_DIR)/sigil-mcp.exe ./cmd/mcp
+
+$(BIN_DIR):
+	mkdir -p $(BIN_DIR)
 
 ## Run all tests
 test:
@@ -28,7 +32,7 @@ test-race:
 
 ## Run go vet
 vet:
-	go vet ./...
+	CGO_ENABLED=1 go vet ./...
 
 ## Tidy go.mod / go.sum
 tidy:
@@ -36,4 +40,4 @@ tidy:
 
 ## Clean built binaries
 clean:
-	rm -f sigil.exe sigil-mcp.exe
+	rm -rf $(BIN_DIR)

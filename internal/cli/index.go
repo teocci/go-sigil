@@ -11,8 +11,10 @@ import (
 	"go-sigil/internal/enrichment"
 	"go-sigil/internal/parser"
 	"go-sigil/internal/parser/golang"
+	"go-sigil/internal/parser/java"
 	"go-sigil/internal/parser/javascript"
 	"go-sigil/internal/parser/python"
+	"go-sigil/internal/parser/rust"
 	"go-sigil/internal/parser/typescript"
 	"go-sigil/internal/security"
 	"go-sigil/internal/service"
@@ -97,6 +99,8 @@ func runIndex(cmd *cobra.Command, repoRoot string, opts service.IndexOptions, fo
 	registry.Register(typescript.New())
 	registry.Register(javascript.New())
 	registry.Register(python.New())
+	registry.Register(rust.New())
+	registry.Register(java.New())
 
 	filesDir := storage.FilesDir(cfg.CacheRoot, repoHash)
 	indexer := service.NewIndexer(

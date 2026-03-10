@@ -10,6 +10,7 @@ import (
 
 	"go-sigil/internal/config"
 	"go-sigil/internal/models"
+	"go-sigil/internal/storage"
 	"go-sigil/internal/store"
 )
 
@@ -21,11 +22,12 @@ const (
 // Server is the Sigil MCP stdio server.
 // One instance runs for the lifetime of the sigil-mcp process.
 type Server struct {
-	cfg       *config.Config
-	serverCWD string
-	cacheRoot string
-	sess      *mcpSession
-	impl      *mcp.Server
+	cfg        *config.Config
+	serverCWD  string
+	cacheRoot  string
+	sess       *mcpSession
+	impl       *mcp.Server
+	openRepoFn func(repoRoot, cacheRoot string) (store.SymbolStore, *storage.RepoMeta, error)
 }
 
 // NewServer creates and configures the MCP server, registering all 9 tools.
@@ -36,10 +38,11 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	}
 
 	s := &Server{
-		cfg:       cfg,
-		serverCWD: cwd,
-		cacheRoot: cfg.CacheRoot,
-		sess:      newMCPSession(),
+		cfg:        cfg,
+		serverCWD:  cwd,
+		cacheRoot:  cfg.CacheRoot,
+		sess:       newMCPSession(),
+		openRepoFn: openRepo,
 	}
 
 	impl := mcp.NewServer(&mcp.Implementation{Name: serverName, Version: serverVersion}, nil)
