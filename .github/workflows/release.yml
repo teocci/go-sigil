@@ -1,0 +1,168 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v1.2.3)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  # ─── Test ────────────────────────────────────────────────────────────────────
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Add MinGW to PATH (Windows)
+        if: matrix.os == 'windows-latest'
+        run: echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        shell: pwsh
+
+      - name: Test
+        run: CGO_ENABLED=1 go test ./...
+        shell: bash
+
+      - name: Test (race detector)
+        run: CGO_ENABLED=1 go test -race ./...
+        shell: bash
+
+  # ─── Build ───────────────────────────────────────────────────────────────────
+  build:
+    name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
+    needs: test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            suffix: ''
+            archive_ext: tar.gz
+
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            suffix: .exe
+            archive_ext: zip
+
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            suffix: ''
+            archive_ext: tar.gz
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Add MinGW to PATH (Windows)
+        if: matrix.os == 'windows-latest'
+        run: echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        shell: pwsh
+
+      - name: Build sigil
+        run: |
+          CGO_ENABLED=1 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
+            go build -ldflags="-s -w" -o sigil${{ matrix.suffix }} ./cmd/sigil
+        shell: bash
+
+      - name: Build sigil-mcp
+        run: |
+          CGO_ENABLED=1 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
+            go build -ldflags="-s -w" -o sigil-mcp${{ matrix.suffix }} ./cmd/mcp
+        shell: bash
+
+      - name: Archive (tar.gz)
+        if: matrix.archive_ext == 'tar.gz'
+        run: |
+          ARCHIVE="sigil-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz"
+          tar czf "$ARCHIVE" sigil${{ matrix.suffix }} sigil-mcp${{ matrix.suffix }}
+          echo "ARCHIVE=$ARCHIVE" >> "$GITHUB_ENV"
+        shell: bash
+
+      - name: Archive (zip)
+        if: matrix.archive_ext == 'zip'
+        run: |
+          $archive = "sigil-${{ matrix.goos }}-${{ matrix.goarch }}.zip"
+          7z a $archive sigil${{ matrix.suffix }} sigil-mcp${{ matrix.suffix }} | Out-Null
+          echo "ARCHIVE=$archive" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        shell: pwsh
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: sigil-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: ${{ env.ARCHIVE }}
+          if-no-files-found: error
+          retention-days: 1
+
+  # ─── Release ─────────────────────────────────────────────────────────────────
+  release:
+    name: Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all archives
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum * > checksums.txt
+          echo "=== checksums.txt ==="
+          cat checksums.txt
+        shell: bash
+
+      - name: Resolve tag name
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+        shell: bash
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: ${{ steps.tag.outputs.name }}
+          draft: false
+          prerelease: ${{ contains(steps.tag.outputs.name, '-') }}
+          generate_release_notes: true
+          files: |
+            dist/sigil-linux-amd64.tar.gz
+            dist/sigil-windows-amd64.zip
+            dist/sigil-darwin-arm64.tar.gz
+            dist/checksums.txt

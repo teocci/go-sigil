@@ -19,7 +19,10 @@
       "Bash(echo \"exit: $?\")",
       "Bash(python3 -c \"import sys,json; [print\\(json.dumps\\(json.loads\\(l\\),indent=2\\)\\) for l in sys.stdin if l.strip\\(\\)]\")",
       "Bash(xxd d:/tmp/sigil-mcp-out.txt)",
-      "Bash(CGO_ENABLED=1 go run ./cmd/sigil mcp --help)"
+      "Bash(CGO_ENABLED=1 go run ./cmd/sigil mcp --help)",
+      "WebFetch(domain:github.com)",
+      "Bash(gh api repos/cli/cli/contents/.github/workflows/deployment.yml --jq '.content')",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ],
     "additionalDirectories": [
       "\\tmp",
