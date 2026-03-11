@@ -16,7 +16,7 @@ import (
 
 const (
 	serverName    = "sigil"
-	serverVersion = "v0.1.1"
+	serverVersion = "v0.1.2"
 )
 
 // Server is the Sigil MCP stdio server.

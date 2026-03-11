@@ -12,16 +12,24 @@ import (
 
 func newDiffCmd() *cobra.Command {
 	var jsonOut bool
+	var since string
 
 	cmd := &cobra.Command{
-		Use:   "diff <ref> [path]",
+		Use:   "diff [--since <ref>] [ref] [path]",
 		Short: "Show symbol-level diff since a git ref",
-		Args:  cobra.MinimumNArgs(1),
+		Args:  cobra.RangeArgs(0, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			since := args[0]
+			// --since flag takes precedence over positional arg
+			if since == "" {
+				if len(args) == 0 {
+					return fmt.Errorf("git ref required: use --since <ref> or pass ref as first argument")
+				}
+				since = args[0]
+				args = args[1:]
+			}
 			pathArg := "."
-			if len(args) > 1 {
-				pathArg = args[1]
+			if len(args) > 0 {
+				pathArg = args[0]
 			}
 			root, err := resolveRepoRoot([]string{pathArg})
 			if err != nil {
@@ -52,6 +60,7 @@ func newDiffCmd() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&jsonOut, "json", false, "output as JSON")
+	cmd.Flags().StringVar(&since, "since", "", "git ref to diff since (commit hash, branch, or tag)")
 	return cmd
 }
 
