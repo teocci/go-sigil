@@ -309,3 +309,7 @@ Windows filesystems via `/mnt/c/...`.
 ## Implementation Status
 
 All milestones M1–M8 complete. See `PROGRESS.md` for full details.
+
+## Commit Style
+
+- Never add `Co-Authored-By` trailers to commit messages.
