@@ -30,19 +30,23 @@ summaries are available (which makes every later step more informative).
 ### Step 2 — File tree with symbol density
 
 ```bash
-sigil tree --counts
+sigil tree --source-only
 ```
 
-Returns: directory tree annotated with per-file symbol counts. Token budget: ~400 tokens.
+Returns: directory tree showing only source code files, annotated with per-file
+symbol counts. Token budget: ~200–400 tokens.
 
-The `--counts` flag shows which files are densest. High-symbol files are usually
-the core logic; low-symbol files are glue, config, or tests.
+`--source-only` prunes non-code files (docs, configs, IDE dirs). Default depth is 2,
+which is sufficient for most repos.
 
-For large monorepos, scope to a subdirectory to reduce output:
+For large monorepos, scope to a subdirectory:
 
 ```bash
-sigil tree --scope internal/ --depth 3 --counts
+sigil tree internal/ --source-only
 ```
+
+**Never use `--depth 3` on the repo root** — it can produce 30,000+ chars of output.
+Scope to a subdirectory (`sigil tree internal/`) instead of increasing depth.
 
 ### Step 3 — Locate entry points
 
@@ -53,8 +57,7 @@ sigil search main --kind function
 Returns: symbol names, signatures, file locations, and enrichment summaries where
 available. No source code. Token budget: ~200 tokens per search.
 
-Follow up with targeted searches based on what Step 1 revealed about the language
-and architecture:
+Follow up with targeted searches based on what Step 1 revealed:
 
 ```bash
 sigil search handler --kind function --limit 20
@@ -64,6 +67,10 @@ sigil search "Controller" --kind class --language typescript
 
 Use `--kind` to filter by symbol type: `function`, `method`, `class`, `type`,
 `interface`, `const`, `var`. Use `--language` in multilingual repos.
+
+**Search tip:** Bare words auto-expand with `*` (prefix match). `sigil search "sav"`
+matches `save`, `savings`, `savings_service`. If a search returns 0 results, try a
+shorter prefix or a different word in the symbol name.
 
 ### Step 4 — Inspect a file's symbol structure
 
@@ -79,20 +86,30 @@ This is the primary command for understanding a file without reading it. Run it
 on the 3–5 files that appear most important from Steps 2–3. Use the output to
 decide which specific symbols need deeper inspection.
 
+**Anti-pattern:** Do NOT `outline` a file and then `get` every symbol in it —
+that is equivalent to reading the whole file but with more calls and more overhead.
+Only `get` the 1–3 symbols you actually need source for.
+
 ### Step 5 — Retrieve targeted source
 
 ```bash
-sigil get --id <symbol_id>
-sigil get --id <symbol_id> --context 3
+sigil get <symbol_id>
+sigil get <symbol_id> --context 3
 ```
 
 Returns: the symbol's source code only, with optional N lines of surrounding
 context. Token budget: ~100–300 tokens per symbol.
 
-Use batch retrieval when you need several related symbols at once:
+**Always batch multiple IDs into a single call:**
 
 ```bash
-sigil get --id <id1> --id <id2> --id <id3>
+# Correct — one call for multiple symbols
+sigil get <id1> <id2> <id3> .
+
+# Wrong — three separate calls (3x overhead)
+sigil get <id1> .
+sigil get <id2> .
+sigil get <id3> .
 ```
 
 Only retrieve symbols you cannot understand from the `outline` or enrichment
@@ -100,13 +117,12 @@ summaries alone.
 
 ## Tips
 
-- Run `overview` + `tree --counts` before any `search` — together they cost under
-  600 tokens and prevent blind searching
-- Use `outline` on any file before considering `get --file` — `outline` is
-  typically 10x more token-efficient
+- Run `overview` + `tree --source-only` before any `search` — together they cost
+  under 600 tokens and prevent blind searching
+- Use `outline` on any file before `get` — `outline` is typically 10x more token-efficient
 - If enrichment summaries appear in `search` output, trust them and skip `get`
   for symbols you already understand
-- Prefer `get --id --context 3` over reading files for context around a symbol
-- Use batch `--id` retrieval to get multiple related symbols in one call
+- Batch `get` calls: `sigil get id1 id2 id3 .` — never call `get` in a loop
+- Use `--compact` for even lower token cost: `sigil get id1 id2 --compact .`
 - Hand off to the `pre-refactor` skill once you have enough context to start making changes
 - Hand off to the `onboarding` skill if the goal is to produce a structured developer guide

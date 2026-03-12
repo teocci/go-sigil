@@ -41,9 +41,12 @@ sigil search <symbol-name> --file internal/auth/service.go
 Returns: symbol list with IDs, kinds, signatures, file locations, and summaries.
 Token budget: ~200 tokens.
 
-Note the `id` field from the matching result — you need it for all subsequent
-commands. If multiple symbols match by name, use `--file` to disambiguate or use
-`--kind` to filter by type.
+**Search tip:** Bare words auto-expand with `*` (prefix match). If you get 0 results,
+try a shorter prefix or check the exact symbol name. `sigil search "auth"` will find
+`Authenticate`, `authService`, `AuthHandler`, etc.
+
+Note the `id` field — you need it for all subsequent commands. Use `--file` or
+`--kind` to disambiguate when multiple symbols match.
 
 ### Step 2 — Outline the containing file
 
@@ -55,8 +58,7 @@ Returns: all symbols in the file as a structured hierarchy. Token budget: ~200�
 tokens.
 
 This reveals the target symbol's context: what interface it implements, which struct
-it belongs to, what methods surround it. You need this to understand what a signature
-change will ripple through.
+it belongs to, what methods surround it.
 
 ### Step 3 — Map callers (blast radius)
 
@@ -64,18 +66,25 @@ change will ripple through.
 sigil deps <id> --direction callers
 ```
 
-Returns: all symbols that directly call the target, with summaries. No source code.
-Token budget: ~200–400 tokens.
+Returns: all symbols that directly call the target, with summaries. Token budget:
+~200–400 tokens.
 
-For a wider blast radius, expand to second-order callers:
+**Before calling deps, check index health:**
+
+```bash
+sigil status .
+```
+
+If `possible_unresolved_count` is > 0, call graph results may be incomplete. Use
+`sigil search <symbol-name>` as a supplemental check (Step 6) in that case.
+
+For a wider blast radius:
 
 ```bash
 sigil deps <id> --direction callers --depth 2
 ```
 
-Use `--depth 2` when the symbol is a utility called by many things — it shows
-callers of callers, revealing the full impact. Avoid `--depth 3` or higher for
-widely-used symbols; the graph becomes too large to act on.
+Avoid `--depth 3` or higher for widely-used symbols — the graph becomes too large.
 
 ### Step 4 — Map callees (dependencies)
 
@@ -86,20 +95,23 @@ sigil deps <id> --direction calls
 Returns: everything the target symbol calls, with summaries. Token budget: ~100–300
 tokens.
 
-This reveals what the symbol depends on. If you are changing behavior rather than
-just a signature, these are the symbols that may need coordinated updates.
-
 ### Step 5 — Retrieve the symbol source
 
 ```bash
-sigil get --id <id>
-sigil get --id <id> --context 5
+# Single symbol
+sigil get <id>
+
+# With surrounding context
+sigil get <id> --context 5
+
+# Multiple related symbols — always batch
+sigil get <id1> <id2> <id3> .
 ```
 
-Returns: the exact source of the symbol. Token budget: ~100–400 tokens.
+Token budget: ~100–400 tokens.
 
-Use `--context 5` when the symbol has closely related declarations adjacent to it
-(e.g., a method where you need to see the struct definition above it).
+**Always batch**: `sigil get id1 id2 id3 .` costs one call. Never loop `sigil get`
+for individual IDs.
 
 ### Step 6 — Search for string-based usages (optional)
 
@@ -108,8 +120,7 @@ sigil search <symbol-name>
 ```
 
 Catches usages the static call graph may miss: dynamic dispatch via interfaces,
-reflection-based calls, or cross-package references not yet resolved as call edges.
-Token budget: ~200 tokens.
+reflection-based calls, or unresolved cross-package references. Token budget: ~200 tokens.
 
 Run this step when `deps --direction callers` returns unexpectedly few results or
 the symbol is used via an interface.
@@ -144,13 +155,10 @@ Risk guide:
 
 - Run this skill *before* opening an editor — discovering blast radius after editing
   means re-checking everything manually
-- If `deps --direction callers` returns 0 results, the symbol may be unexported,
-  unreachable, or not yet resolved in the index — run `sigil status --verify` to
-  check index completeness
+- If `deps --direction callers` returns 0 results, the symbol may be unexported or
+  unresolved — run `sigil status --verify` then fall back to `sigil search <name>`
 - For interface methods, the call graph tracks each implementing type separately —
   search by method name in addition to running `deps` on the interface itself
-- A high caller count is not always high risk — 10 callers all following the same
-  pattern in one package is lower risk than 3 callers in different packages with
-  different call patterns
+- Batch `get` calls: `sigil get id1 id2 id3 .` — never call get in a loop
 - Hand off to `debug-callgraph` if the goal is understanding unexpected runtime
   behavior rather than planning a change

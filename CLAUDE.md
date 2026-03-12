@@ -139,7 +139,7 @@ service.NewSearcher(st) *Searcher        // Search(ctx, query, SearchOptions) (*
 service.NewRetriever(st, filesDir, repoRoot) *Retriever  // Get(ctx, ids, files, contextLines) (*GetResult, error)
 service.NewDeps(st) *Deps                // Trace(ctx, symbolID, direction, depth) (*DepsResult, error)
 service.NewOutline(st) *Outline          // ForFile(ctx, file) (*OutlineResult, error)
-service.NewTree(st, repoRoot) *Tree      // Build(ctx, scope, maxDepth, includeSymbolCounts) (*TreeResult, error)
+service.NewTree(st, repoRoot) *Tree      // Build(ctx, scope, maxDepth, includeSymbolCounts, sourceOnly ...bool) (*TreeResult, error)
 service.NewOverview(st, meta) *OverviewService  // Summary(ctx) (*OverviewResult, error)
 service.NewEnvService(repoRoot) *EnvService     // Inspect(ctx) (*EnvResult, error)
 service.NewDiffer(st, repoRoot) *Differ         // Diff(ctx, since) (*DiffResult, error)
@@ -230,6 +230,31 @@ CC="zig cc -target x86_64-linux-musl" CGO_ENABLED=1 GOOS=linux go build ./cmd/si
 - `sigil_env` does not open a store — no DB required for `.env` inspection
 - Token savings persisted to `savings_log` via `st.AppendSavings()` on each tool call
 - MCP client config: `{"command": "sigil", "args": ["mcp"], "env": {"SIGIL_LOG_FILE": "..."}}`
+
+## Search & CLI Optimizations
+
+### FTS5 prefix matching (`internal/store/search.go`)
+
+`normalizeFTSQuery(q)` auto-appends `*` to bare-word queries so `"saving"` matches
+`savings`, `savings_service`, etc. Queries with FTS5 operators (`*`, `"`, `-`, `OR`,
+`AND`, `NOT`) pass through unchanged. If FTS5 rejects a query, `searchSymbolsLike()`
+falls back to `LIKE '%query%'` on `name` and `qualified_name`.
+
+### CLI flags added in benchmark optimization
+
+| Command | Flag | Effect |
+|---|---|---|
+| `sigil tree` | `--source-only` | Prunes non-source files and empty directories |
+| `sigil tree` | `--depth` (default **2**, was 3) | Prevents 30K+ char output on large repos |
+| `sigil get` | `--compact` | Text output: `=== qualified_name ===\n<source>` (no JSON envelope, ~40% smaller) |
+
+### Agent skill anti-patterns (documented in `.claude/skills/`)
+
+- **Never** `outline` a file then `get` each symbol — equivalent to reading the file with 2x overhead
+- **Always batch** `sigil get id1 id2 id3 .` — one call, not N separate calls
+- **Search tip:** bare words auto-expand with `*` (prefix match); no need for manual `*` suffix
+- **Tree:** never use `--depth 3+` on repo root; scope to subdirectory instead
+- **Deps caveat:** check `sigil status` for `possible_unresolved_count` before relying on call graph
 
 ## Testing Patterns
 

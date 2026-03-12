@@ -37,29 +37,18 @@ sigil overview
 Returns: language mix, package structure, symbol totals, enrichment status, index
 age. Token budget: ~200 tokens.
 
-Extract: what languages are used, how many packages or modules exist, whether
-enrichment summaries are available. The language mix tells you where to look for
-different concerns (e.g., Go backend in `internal/`, TypeScript frontend in `src/`).
-
 ### Step 2 — Architectural skeleton
 
 ```bash
-sigil tree --depth 2
+sigil tree --source-only
 ```
 
-Returns: top-level directory structure. Token budget: ~300 tokens.
+Returns: source directory structure with symbol counts. Token budget: ~200–400 tokens.
 
-Follow up with density information to find where the logic lives:
+`--source-only` prunes non-code files (docs, configs, IDE dirs). Default depth is 2.
+To explore a subdirectory: `sigil tree internal/ --source-only`
 
-```bash
-sigil tree --counts --depth 3
-```
-
-Token budget: ~500 tokens.
-
-Identify the major architectural layers (e.g., `cmd/`, `internal/`, `pkg/`, `api/`,
-`src/components/`) and which directories hold the most symbols. These become the
-"zones" in your architecture summary.
+**Never use `--depth 3` on the repo root** — output can exceed 30,000 chars.
 
 ### Step 3 — Entry points and public API
 
@@ -73,9 +62,10 @@ sigil search "Service" --kind type
 Returns: symbol names, signatures, file locations, summaries. Token budget: ~200
 tokens per search.
 
-Locate the primary entry points: main functions, constructors, HTTP handlers,
-service factories. These are the "doors" a new developer should understand first.
-Stop after 2–3 searches — you want breadth here, not depth.
+**Search tip:** Bare words auto-expand with `*` (prefix match). If a search returns
+0 results, try a shorter prefix or a different word from the symbol name.
+
+Stop after 2–3 searches — breadth over depth at this stage.
 
 ### Step 4 — File-by-file outlines for core files
 
@@ -85,28 +75,23 @@ sigil outline internal/service/service.go
 sigil outline internal/api/handlers.go
 ```
 
-Returns: complete symbol hierarchy for each file — names, kinds, summaries. Token
-budget: ~200–400 tokens per file.
+Returns: complete symbol hierarchy — names, kinds, summaries. Token budget: ~200–400
+tokens per file.
 
-Outline the 3–5 files that appeared most structurally central in Steps 2–3. This
-reveals internal organization without reading source. Use the symbol list to decide
-which specific symbols to retrieve for the guide.
+**Anti-pattern:** Do NOT `outline` then `get` every symbol in the file — that defeats
+the purpose. Only retrieve source for the 2–4 symbols critical for the guide.
 
 ### Step 5 — Retrieve key symbol signatures
 
 ```bash
-sigil get --id <symbol_id> --context 2
+# Always batch multiple IDs into one call
+sigil get <id1> <id2> <id3> .
 ```
 
-Retrieve only the 3–5 most architecturally significant symbols (primary service
-interface, main request dispatcher, core data types). Use `--context 2` to see
-surrounding declarations without reading the whole file.
-
-Token budget: ~100–300 tokens per symbol.
+Retrieve only the 3–5 most architecturally significant symbols. Token budget: ~100–300
+tokens per symbol.
 
 ## Output Format
-
-Organize the findings as a developer guide:
 
 ```markdown
 ## Architecture Summary
@@ -128,8 +113,7 @@ Organize the findings as a developer guide:
 
 ## Suggested First Tasks
 
-1. [A concrete task that teaches the data flow — e.g., "Add a log statement inside X
-   and call it from Y to see how requests flow through the system"]
+1. [A concrete task that teaches the data flow]
 2. [A task that teaches the persistence layer]
 3. [A task that teaches the test patterns]
 ```
@@ -137,11 +121,8 @@ Organize the findings as a developer guide:
 ## Tips
 
 - Use enrichment summaries from `search` as the primary source of symbol descriptions
-  in the guide — they are pre-computed and add no token cost
-- If the repo has no enrichment (`sigil overview` shows enrichment: none), run
-  `sigil index . --enrich` before starting — the guide quality improves significantly
-- Limit `get` calls to 3–5 critical symbols — the goal is architecture understanding,
-  not complete source review
-- Keep Suggested First Tasks concrete and runnable, not vague ("read the README")
+- Batch `get` calls: `sigil get id1 id2 id3 .` — never loop single-ID calls
+- Limit `get` calls to 3–5 critical symbols — architecture understanding, not full review
+- Keep Suggested First Tasks concrete and runnable
 - Hand off to `explore-codebase` when the user is ready to investigate a specific feature
 - Hand off to `pre-refactor` when the user is ready to make their first change

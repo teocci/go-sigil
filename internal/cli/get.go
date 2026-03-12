@@ -14,11 +14,21 @@ func newGetCmd() *cobra.Command {
 	var contextLines int
 	var files []string
 	var jsonOut bool
+	var compact bool
 
 	cmd := &cobra.Command{
 		Use:   "get <id> [id...] [path]",
 		Short: "Retrieve symbol source by ID",
-		Args:  cobra.MinimumNArgs(1),
+		Long: `Retrieve symbol source by one or more IDs.
+
+Multiple IDs can be provided in a single call to minimize round trips:
+  sigil get id1 id2 id3 .
+
+Output modes:
+  default  — human-readable with headers
+  --json   — full JSON envelope (id, file, line numbers, source)
+  --compact — minimal text: header + source only (no JSON overhead)`,
+		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ids, pathArg := splitIDsAndPath(args)
 
@@ -48,8 +58,12 @@ func newGetCmd() *cobra.Command {
 			}
 
 			for _, sym := range result.Symbols {
-				fmt.Fprintf(w, "=== %s (%s) — %s:%d-%d ===\n",
-					sym.QualifiedName, sym.ID, sym.File, sym.LineStart, sym.LineEnd)
+				if compact {
+					fmt.Fprintf(w, "=== %s ===\n", sym.QualifiedName)
+				} else {
+					fmt.Fprintf(w, "=== %s (%s) — %s:%d-%d ===\n",
+						sym.QualifiedName, sym.ID, sym.File, sym.LineStart, sym.LineEnd)
+				}
 				fmt.Fprintln(w, sym.Source)
 				fmt.Fprintln(w)
 			}
@@ -64,6 +78,7 @@ func newGetCmd() *cobra.Command {
 	cmd.Flags().IntVar(&contextLines, "context", 0, "context lines before and after (0-50)")
 	cmd.Flags().StringSliceVar(&files, "file", nil, "raw file paths to retrieve")
 	cmd.Flags().BoolVar(&jsonOut, "json", false, "output as JSON")
+	cmd.Flags().BoolVar(&compact, "compact", false, "compact text output: header + source only (lower token cost than --json)")
 	return cmd
 }
 

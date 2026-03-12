@@ -55,25 +55,28 @@ sigil outline path/to/changed/file.go
 sigil outline src/api/changed-handler.ts
 ```
 
-Returns: complete symbol hierarchy for the file. Token budget: ~200–400 tokens per
-file.
+Returns: complete symbol hierarchy for the file. Token budget: ~200–400 tokens per file.
 
 Outline the 2–3 most significant changed files to understand the full structure of
-what was touched, not just the diff subset. This reveals if a method was added to a
-type, or if a file's overall responsibility shifted.
+what was touched, not just the diff subset.
 
 ### Step 3 — Retrieve modified symbol source
 
 ```bash
-sigil get --id <id>
-sigil get --id <id1> --id <id2> --id <id3>
+# Always batch multiple IDs into one call
+sigil get <id1> <id2> <id3> .
+
+# With surrounding context
+sigil get <id1> <id2> . --context 3
 ```
 
-Retrieve source for symbols marked `modified` or `added` in the diff output that
-need deeper scrutiny. Token budget: ~100–300 tokens per symbol.
+Retrieve source for symbols marked `modified` or `added` in the diff output.
+Token budget: ~100–300 tokens per symbol.
 
-Use batch `--id` to fetch multiple symbols in one call. Skip symbols marked
-`deleted` — they no longer exist and cannot be retrieved. Skip `added` symbols that
+**Always batch**: `sigil get id1 id2 id3 .` costs one call. Never loop `sigil get`
+for individual IDs — it multiplies JSON overhead needlessly.
+
+Skip symbols marked `deleted` — they no longer exist. Skip `added` symbols that
 look trivially correct from the diff summary.
 
 ### Step 4 — Check callers of modified symbols
@@ -88,6 +91,9 @@ updated. Token budget: ~100–300 tokens per symbol.
 This is the most common review miss: a function signature changes, the function
 itself looks correct, but some callers still pass the old argument pattern.
 
+**Note:** If `sigil status .` shows `possible_unresolved_count > 0`, supplement
+with `sigil search <symbol-name>` to catch callers the graph may have missed.
+
 ### Step 5 — Check callees of new symbols
 
 ```bash
@@ -95,12 +101,10 @@ sigil deps <id> --direction calls
 ```
 
 For **newly added** symbols, verify that what they call is appropriate: no
-unexpected cross-layer dependencies, no calls to deprecated functions, no circular
-imports. Token budget: ~100–300 tokens per symbol.
+unexpected cross-layer dependencies, no calls to deprecated functions. Token budget:
+~100–300 tokens per symbol.
 
 ## Review Output Format
-
-Structure the review findings as:
 
 ```markdown
 ## Symbol-Level Diff Summary
@@ -145,10 +149,6 @@ Key concerns:
   symbols — additions and deletions are usually lower risk than modifications
 - Check callers for **every** `modified` function — this step catches the most common
   review miss
-- For deleted symbols, verify they had zero callers before deletion: run
-  `sigil deps <id> --direction callers` on the pre-deletion ID (if available) or
-  look for them in the caller graph of remaining symbols
-- Avoid `sigil get --file` on changed files — use `sigil get --id` per symbol;
-  whole-file retrieval is almost never necessary in code review
+- Batch `get` calls: `sigil get id1 id2 id3 .` — one call, not N separate calls
 - Hand off to `debug-callgraph` if a symbol's behavior looks correct but you suspect
   it is called incorrectly at runtime

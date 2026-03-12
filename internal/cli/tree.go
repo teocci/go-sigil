@@ -13,6 +13,7 @@ import (
 func newTreeCmd() *cobra.Command {
 	var depth int
 	var noSymbols bool
+	var sourceOnly bool
 	var jsonOut bool
 
 	cmd := &cobra.Command{
@@ -38,7 +39,7 @@ func newTreeCmd() *cobra.Command {
 			defer st.Close()
 
 			svc := service.NewTree(st, root)
-			result, err := svc.Build(cmd.Context(), scope, depth, !noSymbols)
+			result, err := svc.Build(cmd.Context(), scope, depth, !noSymbols, sourceOnly)
 			if err != nil {
 				return fmt.Errorf("tree: %w", err)
 			}
@@ -55,8 +56,9 @@ func newTreeCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().IntVar(&depth, "depth", 3, "max depth to display")
+	cmd.Flags().IntVar(&depth, "depth", 2, "max depth to display")
 	cmd.Flags().BoolVar(&noSymbols, "no-symbols", false, "skip symbol count annotation")
+	cmd.Flags().BoolVar(&sourceOnly, "source-only", false, "show only source code files and their parent directories")
 	cmd.Flags().BoolVar(&jsonOut, "json", false, "output as JSON")
 	return cmd
 }

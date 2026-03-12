@@ -7,6 +7,7 @@
 
 | Version | Date | Summary |
 |---|---|---|
+| v0.1.3 | 2026-03-12 | Benchmark-driven optimization: FTS prefix search, `--source-only` tree, `--compact` get, skill anti-patterns |
 | v0.1.2 | 2026-03-11 | Fix `sigil diff --since <ref>` flag; add `Differ` integration tests |
 | v0.1.1 | 2026-03-11 | Fix Makefile CGO + bin/ output; M9 service tests; M10 MCP handler tests; M11 Rust + Java parsers |
 | v0.1.0 | 2026-03-10 | Initial release — M1–M8 complete (scaffold, SQLite, discovery, tree-sitter parsing, indexing, CLI query commands, enrichment, MCP server) |
@@ -312,9 +313,11 @@ github.com/smacker/go-tree-sitter  v0.0.0-20240827094217-dd81d9e9be82 (CGO — r
 
 ---
 
-## M6 — CLI Query Commands ⬜
+## M6 — CLI Query Commands ✅
 
 **Goal:** All query subcommands operational.
+
+**Completed:** 2026-03-10
 
 ### Files Created
 
@@ -323,9 +326,11 @@ github.com/smacker/go-tree-sitter  v0.0.0-20240827094217-dd81d9e9be82 (CGO — r
 
 ---
 
-## M7 — Enrichment Pipeline ⬜
+## M7 — Enrichment Pipeline ✅
 
 **Goal:** LLM-based summaries with graceful fallback. Runs parallel with M6.
+
+**Completed:** 2026-03-10
 
 ### Files Created
 
@@ -389,6 +394,7 @@ echo '{"jsonrpc":"2.0","method":"tools/list","id":1}' | ./sigil-mcp
 | M9 — Service Layer Tests | ✅ Done | 9 files | Mock SymbolStore, table-driven, race-safe |
 | M10 — MCP Handler Tests | ✅ Done | 1 file | 9 tool handlers, mock store injection |
 | M11 — Rust + Java Parsers | ✅ Done | 8 files | tree-sitter, fn/struct/trait/enum/const/type + class/interface/method/enum |
+| Benchmark Optimization | ✅ Done | 8 files | FTS prefix search, `--source-only` tree, `--compact` get, skill updates |
 
 ---
 
@@ -512,6 +518,54 @@ CGO_ENABLED=1 go test ./internal/parser/rust/...
 CGO_ENABLED=1 go test ./internal/parser/java/...
 CGO_ENABLED=1 go test ./...
 ```
+
+---
+
+## Benchmark Optimization — Token Efficiency Fixes ✅
+
+**Completed:** 2026-03-12
+
+**Goal:** Fix root causes of sigil using *more* tokens than native grep+read in benchmark `20260311-423pkafas`.
+
+### Problem
+
+Benchmark showed sigil using more tokens than native across all 5 tasks (T1 +179%, T2 +86%, T3 +122%, T4 +457%, T5 +64%). Root cause analysis identified 5 fixable issues — not a fundamental design flaw.
+
+### Root Causes & Fixes
+
+| # | Cause | Type | Fix |
+|---|---|---|---|
+| 1 | FTS5 search misses partial matches (`"saving"` → 0 results) | Code bug | `normalizeFTSQuery()` auto-appends `*`; LIKE fallback on FTS5 syntax error |
+| 2 | Agent makes N separate `sigil get` calls instead of batching | Skill bug | Skills updated: "Always batch: `sigil get id1 id2 id3 .`" |
+| 3 | `sigil tree --depth 3` → 32,780 chars output | Code issue | Default depth 3→2; `--source-only` flag prunes non-code files |
+| 4 | `outline` → `get` each symbol = reading file with 2x overhead | Skill bug | Anti-pattern warning added to all skills |
+| 5 | JSON envelope overhead ~40% for small symbols | Code issue | `--compact` flag: `=== qualified_name ===\n<source>` |
+
+### Files Changed
+
+| File | Change |
+|---|---|
+| `internal/store/search.go` | `normalizeFTSQuery()`, `searchSymbolsLike()` LIKE fallback |
+| `internal/service/tree.go` | `Build()` accepts variadic `sourceOnly ...bool`; `collectNodes()` prunes unsupported files |
+| `internal/cli/tree.go` | `--source-only` flag, default depth 3→2 |
+| `internal/cli/get.go` | `--compact` flag, text-only output mode |
+| `.claude/skills/explore-codebase/SKILL.md` | Batching, anti-patterns, prefix search, `--source-only` |
+| `.claude/skills/onboarding/SKILL.md` | Same |
+| `.claude/skills/pre-refactor/SKILL.md` | Same |
+| `.claude/skills/code-review/SKILL.md` | Same |
+
+### Verification
+
+```bash
+CGO_ENABLED=1 go test ./...              # all packages pass
+sigil search "saving" .                   # returns savings-related symbols (was 0)
+sigil tree . --source-only                # no .idea, .github, non-source files
+sigil get <id> . --compact                # text output, no JSON envelope
+```
+
+### Verdict
+
+Sigil is worth keeping for: targeted symbol lookup (known IDs), `diff --since` (no native equivalent), code review, and call graph tracing. It loses for open-ended exploration where grep+read has zero overhead.
 
 ---
 

@@ -41,10 +41,12 @@ func NewTree(st store.SymbolStore, repoRoot string) *Tree {
 }
 
 // Build constructs the directory tree for scope, up to maxDepth levels.
-func (t *Tree) Build(ctx context.Context, scope string, maxDepth int, includeSymbolCounts bool) (*TreeResult, error) {
+// If sourceOnly is true, non-code files and directories with no code descendants are pruned.
+func (t *Tree) Build(ctx context.Context, scope string, maxDepth int, includeSymbolCounts bool, sourceOnly ...bool) (*TreeResult, error) {
 	if maxDepth <= 0 {
-		maxDepth = 3
+		maxDepth = 2
 	}
+	pruneUnsupported := len(sourceOnly) > 0 && sourceOnly[0]
 
 	files, err := t.st.ListFiles(ctx)
 	if err != nil {
@@ -79,7 +81,7 @@ func (t *Tree) Build(ctx context.Context, scope string, maxDepth int, includeSym
 		insertPath(root, p, symCounts[f.Path], getFileSize(filepath.Join(t.repoRoot, f.Path)))
 	}
 
-	nodes := collectNodes(root, 0, maxDepth)
+	nodes := collectNodes(root, 0, maxDepth, pruneUnsupported)
 	return &TreeResult{Root: scope, Nodes: nodes}, nil
 }
 
@@ -110,7 +112,7 @@ func insertPath(parent *dirNode, relPath string, symCount int, size int64) {
 	}
 }
 
-func collectNodes(node *dirNode, depth, maxDepth int) []TreeNode {
+func collectNodes(node *dirNode, depth, maxDepth int, sourceOnly bool) []TreeNode {
 	if depth >= maxDepth {
 		return nil
 	}
@@ -123,16 +125,27 @@ func collectNodes(node *dirNode, depth, maxDepth int) []TreeNode {
 	var nodes []TreeNode
 	for _, name := range names {
 		child := node.children[name]
+		supported := child.language != ""
+
+		// sourceOnly: skip unsupported leaf files entirely.
+		if sourceOnly && child.isFile && !supported {
+			continue
+		}
+
 		tn := TreeNode{
 			Path:        name,
 			IsDir:       !child.isFile,
 			Language:    child.language,
 			SymbolCount: child.symbolCount,
-			Supported:   child.language != "",
+			Supported:   supported,
 			SizeBytes:   child.sizeBytes,
 		}
 		if !child.isFile {
-			tn.Children = collectNodes(child, depth+1, maxDepth)
+			tn.Children = collectNodes(child, depth+1, maxDepth, sourceOnly)
+			// sourceOnly: prune directories that have no code descendants.
+			if sourceOnly && len(tn.Children) == 0 {
+				continue
+			}
 		}
 		nodes = append(nodes, tn)
 	}

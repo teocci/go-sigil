@@ -6,7 +6,7 @@ import "time"
 // Application identity.
 const (
 	AppName    = "sigil"
-	AppVersion = "0.1.2"
+	AppVersion = "0.1.3"
 )
 
 // Database schema.
