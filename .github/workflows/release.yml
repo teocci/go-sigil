@@ -72,6 +72,9 @@ jobs:
             suffix: ''
             archive_ext: tar.gz
 
+    env:
+      ARCHIVE: sigil-${{ matrix.goos }}-${{ matrix.goarch }}.${{ matrix.archive_ext }}
+
     steps:
       - uses: actions/checkout@v6
 
@@ -100,18 +103,12 @@ jobs:
 
       - name: Archive (tar.gz)
         if: matrix.archive_ext == 'tar.gz'
-        run: |
-          ARCHIVE="sigil-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz"
-          tar czf "$ARCHIVE" sigil${{ matrix.suffix }} sigil-mcp${{ matrix.suffix }}
-          echo "ARCHIVE=$ARCHIVE" >> "$GITHUB_ENV"
+        run: tar czf "$ARCHIVE" sigil${{ matrix.suffix }} sigil-mcp${{ matrix.suffix }}
         shell: bash
 
       - name: Archive (zip)
         if: matrix.archive_ext == 'zip'
-        run: |
-          $archive = "sigil-${{ matrix.goos }}-${{ matrix.goarch }}.zip"
-          7z a $archive sigil${{ matrix.suffix }} sigil-mcp${{ matrix.suffix }} | Out-Null
-          echo "ARCHIVE=$archive" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        run: 7z a $env:ARCHIVE sigil${{ matrix.suffix }} sigil-mcp${{ matrix.suffix }} | Out-Null
         shell: pwsh
 
       - name: Upload archive
