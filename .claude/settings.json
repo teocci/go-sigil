@@ -8,12 +8,15 @@
       "Bash(GOTOOLCHAIN=local go get *)",
       "Bash(go build *)",
       "Bash(go vet *)",
+      "Bash(go test *)",
       "Bash(go mod tidy)",
       "Bash(go run ./cmd/sigil version)",
       "Bash(go run ./cmd/sigil --help)",
       "Bash(CGO_ENABLED=1 go build *)",
       "Bash(CGO_ENABLED=1 go test *)",
-      "Bash(go test *)"
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)"
     ],
     "deny": [
       "Bash(rm -rf *)"

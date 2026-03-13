@@ -604,6 +604,7 @@ Temporary Items
 ## Remove temporary directories
 tmp/
 bundles/
+bench/
 
 ## Remove config files
 .env
